@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprite Studio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--surface:#111;--border:#222;
+  --accent:#f0e040;--text:#e8e8e8;--muted:#555;
+  --green:#4ade80;--red:#f87171;
+}
+body{background:var(--bg);color:var(--text);font-family:monospace;min-height:100vh}
+
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:100}
+#lock h1{font-size:28px;font-weight:900;color:var(--accent);letter-spacing:-1px}
+#lock p{font-size:11px;color:var(--muted)}
+.lock-row{display:flex;gap:8px}
+#pw{background:#000;border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:14px;padding:11px 14px;border-radius:8px;outline:none;width:220px}
+#pw:focus{border-color:var(--accent)}
+#pw-btn{background:var(--accent);color:#000;font-weight:700;font-size:13px;padding:11px 18px;border:none;border-radius:8px;cursor:pointer}
+#pw-err{font-size:11px;color:var(--red);height:14px;text-align:center}
+
+#app{display:none;max-width:700px;margin:0 auto;padding:2rem 1rem}
+.hdr{margin-bottom:1.5rem}
+.hdr h1{font-size:26px;font-weight:900;color:var(--accent)}
+.hdr p{font-size:11px;color:var(--muted);margin-top:3px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1rem}
+.clabel{font-size:10px;font-weight:700;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+
+.upload-zone{border:1.5px dashed var(--border);border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;transition:border 0.15s}
+.upload-zone:hover{border-color:var(--accent)}
+.upload-zone input{display:none}
+#src-thumb{max-height:120px;border-radius:6px;border:1px solid var(--border);display:none;margin:10px auto 0}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase}
+.ctrl select,.ctrl input[type=number]{background:#000;border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:12px;padding:8px 10px;border-radius:7px;outline:none;width:100%}
+.ctrl select:focus,.ctrl input:focus{border-color:var(--accent)}
+
+.genbtn{width:100%;background:var(--accent);color:#000;font-weight:900;font-size:14px;padding:14px;border:none;border-radius:9px;cursor:pointer;margin-top:4px;letter-spacing:0.05em}
+.genbtn:hover{opacity:0.88}
+.genbtn:disabled{opacity:0.2;cursor:not-allowed}
+
+#prog-card{display:none}
+.pbar-wrap{background:#000;border-radius:100px;height:3px;overflow:hidden;margin:8px 0}
+.pbar{height:100%;background:var(--accent);border-radius:100px;transition:width 0.4s;width:0%}
+.plog{font-size:11px;color:var(--muted);min-height:15px}
+.fstrip{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.fthumb{width:54px;height:54px;border-radius:6px;border:1px solid var(--border);object-fit:contain;background:#000;opacity:0.2;transition:opacity 0.3s}
+.fthumb.done{opacity:1;border-color:var(--green)}
+.fthumb.active{opacity:0.6;border-color:var(--accent)}
+
+#res-card{display:none}
+.sheet-scroll{overflow-x:auto;margin-bottom:12px}
+#sheet-cv{display:block;border-radius:6px;border:1px solid var(--border);image-rendering:pixelated;max-height:96px}
+.arow{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+#anim-cv{border-radius:6px;border:1px solid var(--border);image-rendering:pixelated;background:repeating-conic-gradient(#1a1a1a 0% 25%,#111 0% 50%) 0 0/14px 14px;flex-shrink:0}
+.actrl{flex:1;min-width:150px}
+.fps-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fps-row label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:700}
+#fps-val{font-size:13px;color:var(--accent);min-width:20px}
+.brow{display:flex;gap:8px;flex-wrap:wrap}
+.abtn{background:transparent;border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:12px;padding:8px 13px;border-radius:7px;cursor:pointer;transition:all 0.15s}
+.abtn:hover{border-color:var(--accent);color:var(--accent)}
+.ctag{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6}
+.errmsg{font-size:12px;color:var(--red);margin-top:8px;display:none;padding:8px;background:rgba(248,113,113,0.08);border-radius:6px;border:1px solid rgba(248,113,113,0.2)}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <h1>SPRITE STUDIO</h1>
+  <p>nano banana · gemini image api</p>
+  <div class="lock-row">
+    <input type="password" id="pw" placeholder="Erişim şifresi...">
+    <button id="pw-btn">Giriş</button>
+  </div>
+  <div id="pw-err"></div>
+</div>
+
+<div id="app">
+  <div class="hdr">
+    <h1>SPRITE STUDIO</h1>
+    <p>nano banana (gemini 2.5 flash image)</p>
+  </div>
+
+  <div class="card">
+    <div class="clabel">Karakter Görseli</div>
+    <div class="upload-zone" id="uzone">
+      <input type="file" id="file-in" accept="image/*">
+      <div style="font-size:24px;margin-bottom:6px">🎨</div>
+      <div style="font-size:12px;color:var(--muted)">Tıkla veya sürükle · PNG, şeffaf arka plan ideal</div>
+    </div>
+    <img id="src-thumb">
+  </div>
+
+  <div class="card">
+    <div class="clabel">Animasyon Ayarları</div>
+    <div class="grid2">
+      <div class="ctrl">
+        <label>Animasyon</label>
+        <select id="anim-type">
+          <option value="walk cycle side view">Yürüyüş</option>
+          <option value="run cycle side view fast">Koşma</option>
+          <option value="idle subtle breathing">Bekleme</option>
+          <option value="jump arc crouch to peak to land">Zıplama</option>
+          <option value="sword attack slash windup followthrough">Saldırı</option>
+          <option value="death falling down">Ölüm</option>
+          <option value="victory celebration arms up">Zafer</option>
+          <option value="magic spell cast arms raised">Büyü</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label>Frame Sayısı</label>
+        <input type="number" id="frame-count" value="6" min="4" max="10">
+      </div>
+      <div class="ctrl">
+        <label>Stil</label>
+        <select id="art-style">
+          <option value="16-bit pixel art retro game style">Pixel Art (16-bit)</option>
+          <option value="8-bit pixel art NES era style">Pixel Art (8-bit)</option>
+          <option value="anime flat cel shading clean lines">Anime</option>
+          <option value="cartoon bold outlines vibrant colors">Cartoon</option>
+          <option value="detailed semi-realistic game art">Detaylı</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label>Arka Plan</label>
+        <select id="bg-type">
+          <option value="solid black background">Siyah</option>
+          <option value="solid white background">Beyaz</option>
+          <option value="solid magenta #FF00FF background for chroma key">Magenta (chroma)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="genbtn" id="gen-btn" disabled>🍌 SPRITE SHEET OLUŞTUR</button>
+  <div class="errmsg" id="errmsg"></div>
+
+  <div class="card" id="prog-card" style="margin-top:1rem">
+    <div class="clabel">Üretiliyor</div>
+    <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
+    <div class="plog" id="plog"></div>
+    <div class="fstrip" id="fstrip"></div>
+  </div>
+
+  <div class="card" id="res-card" style="margin-top:1rem">
+    <div class="clabel">Sprite Sheet</div>
+    <div class="sheet-scroll"><canvas id="sheet-cv"></canvas></div>
+    <div class="arow" style="margin-top:12px">
+      <canvas id="anim-cv" width="128" height="128"></canvas>
+      <div class="actrl">
+        <div class="fps-row">
+          <label>FPS</label>
+          <input type="range" min="4" max="24" value="10" step="1" id="fps-sl" style="width:80px">
+          <span id="fps-val">10</span>
+        </div>
+        <div class="brow">
+          <button class="abtn" id="play-btn">⏸ Durdur</button>
+          <button class="abtn" id="dl-btn">⬇ PNG</button>
+        </div>
+        <div class="ctag" id="ctag"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var appPassword = '';
+  var sourceDataUrl = null;
+  var frames = [];
+  var sheetCanvas = null;
+  var animTimer = null;
+  var animFrame = 0;
+  var fps = 10;
+  var playing = true;
+  var totalCost = 0;
+
+  // Lock
+  function unlock() {
+    var pw = document.getElementById('pw').value.trim();
+    if (!pw) return;
+    appPassword = pw;
+    callGemini('gemini-2.5-flash', {
+      contents: [{ parts: [{ text: 'hello' }] }],
+      generationConfig: { maxOutputTokens: 5 }
+    }).then(function() {
+      document.getElementById('lock').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }).catch(function(err) {
+      if (err.message === 'Unauthorized') {
+        document.getElementById('pw-err').textContent = 'Yanlış şifre';
+      } else {
+        document.getElementById('lock').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+      }
+    });
+  }
+
+  document.getElementById('pw-btn').onclick = unlock;
+  document.getElementById('pw').onkeydown = function(e) { if (e.key === 'Enter') unlock(); };
+
+  // API call
+  function callGemini(model, body) {
+    return fetch('/.netlify/functions/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-app-password': appPassword
+      },
+      body: JSON.stringify({ model: model, body: body })
+    }).then(function(res) {
+      return res.text().then(function(text) {
+        if (res.status === 401) throw new Error('Unauthorized');
+        if (!text) throw new Error('Boş response geldi');
+        var data = JSON.parse(text);
+        if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+        return data;
+      });
+    });
+  }
+
+  // Upload
+  document.getElementById('uzone').onclick = function() {
+    document.getElementById('file-in').click();
+  };
+  document.getElementById('file-in').onchange = function(e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function(e2) {
+      sourceDataUrl = e2.target.result;
+      var t = document.getElementById('src-thumb');
+      t.src = sourceDataUrl;
+      t.style.display = 'block';
+      document.getElementById('gen-btn').disabled = false;
+    };
+    r.readAsDataURL(f);
+  };
+
+  var uz = document.getElementById('uzone');
+  uz.ondragover = function(e) { e.preventDefault(); uz.style.borderColor = 'var(--accent)'; };
+  uz.ondragleave = function() { uz.style.borderColor = 'var(--border)'; };
+  uz.ondrop = function(e) {
+    e.preventDefault();
+    uz.style.borderColor = 'var(--border)';
+    var f = e.dataTransfer.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function(e2) {
+      sourceDataUrl = e2.target.result;
+      var t = document.getElementById('src-thumb');
+      t.src = sourceDataUrl;
+      t.style.display = 'block';
+      document.getElementById('gen-btn').disabled = false;
+    };
+    r.readAsDataURL(f);
+  };
+
+  // FPS slider
+  document.getElementById('fps-sl').oninput = function() {
+    fps = parseInt(this.value);
+    document.getElementById('fps-val').textContent = this.value;
+    if (playing) runAnim();
+  };
+
+  // Play/pause
+  document.getElementById('play-btn').onclick = function() {
+    playing = !playing;
+    document.getElementById('play-btn').textContent = playing ? '⏸ Durdur' : '▶ Oynat';
+    if (playing) runAnim();
+    else if (animTimer) clearInterval(animTimer);
+  };
+
+  // Download
+  document.getElementById('dl-btn').onclick = function() {
+    if (!sheetCanvas) return;
+    var a = document.createElement('a');
+    a.download = 'spritesheet.png';
+    a.href = sheetCanvas.toDataURL('image/png');
+    a.click();
+  };
+
+  // Generate
+  document.getElementById('gen-btn').onclick = function() {
+    if (!sourceDataUrl) return;
+
+    var frameCount = parseInt(document.getElementById('frame-count').value);
+    var animType = document.getElementById('anim-type').value;
+    var artStyle = document.getElementById('art-style').value;
+    var bgType = document.getElementById('bg-type').value;
+    var refBase64 = sourceDataUrl.split(',')[1];
+    var refMime = sourceDataUrl.split(';')[0].split(':')[1];
+
+    frames = [];
+    totalCost = 0;
+    sheetCanvas = null;
+    document.getElementById('gen-btn').disabled = true;
+    document.getElementById('res-card').style.display = 'none';
+    document.getElementById('errmsg').style.display = 'none';
+
+    var pc = document.getElementById('prog-card');
+    pc.style.display = 'block';
+
+    var strip = document.getElementById('fstrip');
+    strip.innerHTML = '';
+    for (var i = 0; i < frameCount; i++) {
+      var img = document.createElement('img');
+      img.className = 'fthumb';
+      img.id = 'ft' + i;
+      strip.appendChild(img);
+    }
+
+    setProg(0, 'Karakter analiz ediliyor...');
+
+    // Step 1: describe
+    callGemini('gemini-2.5-flash', {
+      contents: [{
+        parts: [
+          { text: 'Describe this game character briefly: colors, clothing, body type, distinctive features. Max 2 sentences, be specific.' },
+          { inline_data: { mime_type: refMime, data: refBase64 } }
+        ]
+      }],
+      generationConfig: { maxOutputTokens: 150 }
+    }).then(function(data) {
+      var charDesc = data.candidates[0].content.parts[0].text;
+      setProg(8, 'Karakter: ' + charDesc.substring(0, 70) + '...');
+      return generateFrames(frameCount, animType, artStyle, bgType, refBase64, refMime, charDesc, 0, []);
+    }).then(function() {
+      setProg(100, frameCount + ' frame tamamlandi · $' + totalCost.toFixed(3));
+      return buildSheet();
+    }).then(function() {
+      showResult(frameCount);
+    }).catch(function(err) {
+      showErr(err.message);
+      document.getElementById('gen-btn').disabled = false;
+    });
+  };
+
+  function generateFrames(total, animType, artStyle, bgType, refBase64, refMime, charDesc, idx, acc) {
+    if (idx >= total) return Promise.resolve(acc);
+
+    var thumb = document.getElementById('ft' + idx);
+    if (thumb) thumb.classList.add('active');
+
+    var progress = Math.round((idx / (total - 1)) * 100);
+    var pct = 8 + Math.round(((idx + 1) / total) * 88);
+    setProg(pct, 'Frame ' + (idx + 1) + '/' + total + ' uretiliyor...');
+
+    var prompt = 'Sprite animation frame ' + (idx + 1) + ' of ' + total + '.\n' +
+      'CHARACTER: ' + charDesc + '\n' +
+      'ANIMATION: ' + animType + '\n' +
+      'STYLE: ' + artStyle + '\n' +
+      'BACKGROUND: ' + bgType + '\n' +
+      'POSE: ' + progress + '% through the animation cycle\n' +
+      'RULES: identical character appearance, centered full body, square crop, no text.';
+
+    return callGemini('gemini-2.5-flash-image', {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: refMime, data: refBase64 } }
+        ]
+      }],
+      generationConfig: {
+        responseModalities: ['IMAGE', 'TEXT']
+      }
+    }).then(function(data) {
+      var imgUrl = null;
+      var parts = data.candidates[0].content.parts;
+      for (var p = 0; p < parts.length; p++) {
+        if (parts[p].inlineData) {
+          imgUrl = 'data:' + parts[p].inlineData.mimeType + ';base64,' + parts[p].inlineData.data;
+          break;
+        }
+      }
+      if (!imgUrl) throw new Error('Frame ' + (idx + 1) + ' icin gorsel gelmedi');
+
+      frames.push(imgUrl);
+      totalCost += 0.039;
+
+      if (thumb) {
+        thumb.src = imgUrl;
+        thumb.classList.remove('active');
+        thumb.classList.add('done');
+      }
+
+      return generateFrames(total, animType, artStyle, bgType, refBase64, refMime, charDesc, idx + 1, acc);
+    });
+  }
+
+  function setProg(pct, msg) {
+    document.getElementById('pbar').style.width = pct + '%';
+    document.getElementById('plog').textContent = msg;
+  }
+
+  function showErr(msg) {
+    var el = document.getElementById('errmsg');
+    el.textContent = 'Hata: ' + msg;
+    el.style.display = 'block';
+    setProg(0, 'Hata olustu');
+  }
+
+  function loadImg(url) {
+    return new Promise(function(res, rej) {
+      var img = new Image();
+      img.onload = function() { res(img); };
+      img.onerror = rej;
+      img.src = url;
+    });
+  }
+
+  function buildSheet() {
+    return Promise.all(frames.map(loadImg)).then(function(imgs) {
+      var fw = imgs[0].naturalWidth;
+      var fh = imgs[0].naturalHeight;
+      var size = Math.min(fw, fh, 256);
+      var c = document.createElement('canvas');
+      c.width = size * imgs.length;
+      c.height = size;
+      var ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      imgs.forEach(function(img, i) { ctx.drawImage(img, i * size, 0, size, size); });
+      sheetCanvas = c;
+      var sc = document.getElementById('sheet-cv');
+      sc.width = c.width;
+      sc.height = c.height;
+      sc.getContext('2d').drawImage(c, 0, 0);
+    });
+  }
+
+  function showResult(frameCount) {
+    var rc = document.getElementById('res-card');
+    rc.style.display = 'block';
+    document.getElementById('ctag').textContent =
+      'Maliyet: ~$' + totalCost.toFixed(3) + ' (' + frameCount + ' frame x $0.039)';
+    document.getElementById('gen-btn').disabled = false;
+    startAnim();
+  }
+
+  function startAnim() {
+    if (animTimer) clearInterval(animTimer);
+    animFrame = 0;
+    playing = true;
+    document.getElementById('play-btn').textContent = '⏸ Durdur';
+    runAnim();
+  }
+
+  function runAnim() {
+    if (animTimer) clearInterval(animTimer);
+    animTimer = setInterval(function() {
+      if (!sheetCanvas) return;
+      var ac = document.getElementById('anim-cv');
+      var ctx = ac.getContext('2d');
+      var fw = sheetCanvas.height;
+      ctx.clearRect(0, 0, 128, 128);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sheetCanvas, animFrame * fw, 0, fw, fw, 0, 0, 128, 128);
+      animFrame = (animFrame + 1) % frames.length;
+    }, Math.round(1000 / fps));
+  }
+})();
+</script>
+</body>
+</html>
