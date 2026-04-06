@@ -21,11 +21,11 @@ exports.handler = async function (event) {
     return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
   }
 
-  const { prompt, negative_prompt } = parsed;
+  const { prompt } = parsed;
 
   try {
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell/v1/images/generations",
       {
         method: "POST",
         headers: {
@@ -33,35 +33,32 @@ exports.handler = async function (event) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            negative_prompt: negative_prompt || "",
-            num_inference_steps: 4,
-            guidance_scale: 0,
-            width: 512,
-            height: 512,
-          }
+          prompt: prompt,
+          num_inference_steps: 4,
+          width: 512,
+          height: 512,
+          response_format: "b64_json"
         }),
       }
     );
 
+    const text = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
       return {
         statusCode: response.status,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: errText })
+        body: JSON.stringify({ error: text })
       };
     }
 
-    // HF returns binary image
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
+    const data = JSON.parse(text);
+    const base64 = data.data[0].b64_json;
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: base64, mimeType: "image/jpeg" })
+      body: JSON.stringify({ image: base64, mimeType: "image/png" })
     };
 
   } catch (err) {
